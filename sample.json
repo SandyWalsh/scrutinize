@@ -1,0 +1,32 @@
+{"plugins" : {
+     "statsd": {
+            "driver": "__main__:Statsd",
+            "config": {
+                "server": "127.0.0.1",
+                "port": 8000
+            }
+         },
+     "profile": {
+            "driver": "__main__:Profile",
+            "config": {
+                "server": "127.0.0.1",
+                "port": 8000
+            }
+         }
+},
+
+"monkeypatch": [
+    {"this": "__main__:function_a", 
+     "with": "__main__:wrapped_function_a"}
+],
+
+"statsd": [
+    "__main__:function_a",
+    "__main__:Foo.method_a",
+    "__main__:Blah.method_a",
+    "__main__:Blah.method_b",
+    "test_module:Foo.method_a", 
+    "./external/test_module.py|external.test_module:Blah.method_a",
+    "./external/test_module.py|function_b"
+]
+} 
