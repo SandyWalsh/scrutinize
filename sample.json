@@ -27,6 +27,6 @@
     "__main__:Blah.method_b",
     "test_module:Foo.method_a", 
     "./external/test_module.py|external.test_module:Blah.method_a",
-    "./external/test_module.py|function_b"
+    "./external/test_module.py|external.test_module:function_a"
 ]
 } 
