@@ -6,7 +6,7 @@ import sys
 import traceback
 
 
-def find_code(target):
+def get_module(target):
     """Import a named class, module, method or function.
 
     Accepts these formats:
@@ -28,6 +28,12 @@ def find_code(target):
         __import__(module)
 
     klass, sep, function = klass_or_function.rpartition('.')
+    return module, klass, function
+
+
+def find_code(target):
+    """Get the actual implementation of the target."""
+    module, klass, function = get_module(target)
     if not klass:
         return getattr(sys.modules[module], function)
 
@@ -35,15 +41,35 @@ def find_code(target):
     return getattr(klass_object, function)
 
 
+def _plugin_wrapper(inner, plugin, config):
+    def defer(*args, **kwargs):
+        state = plugin.start(config)
+        inner(*args, **kwargs)
+        plugin.stop(state, config)
+
+    return defer
+
+
+def inject_code(target, plugin_impl, command_config):
+    """Get the actual implementation of the target."""
+    module, klass, function = get_module(target)
+    if not klass:
+        orig = getattr(sys.modules[module], function)
+        setattr(sys.modules[module], function, _plugin_wrapper(orig, plugin_impl, command_config))
+        return orig
+
+    klass_object = getattr(sys.modules[module], klass)
+    orig = getattr(klass_object, function)
+    setattr(klass_object, function, _plugin_wrapper(orig, plugin_impl, command_config))
+    return orig
+
+
 class Statsd(object):
     def __init__(self, configuration):
         print "Statsd", configuration
 
-    def start(self, target_config):
-        print "Statsd.start", target_config
-
-    def stop(self, target_config):
-        print "Statsd.stop", target_config
+    def send(self, data):
+        print "Statsd.send", data
 
 
 class Profile(object):
@@ -53,9 +79,19 @@ class Profile(object):
     def start(self, target_config):
         print "Profile.start", target_config
 
-    def stop(self, target_config):
+    def stop(self, state, target_config):
         print "Profile.stop", target_config
 
+
+class Time(object):
+    def __init__(self, configuration):
+        print "Time", configuration
+
+    def start(self, target_config):
+        print "Time.start", target_config
+
+    def stop(self, state, target_config):
+        print "Time.stop",
 
 #--------------------------
 # Sample functions/methods for testing
@@ -74,7 +110,7 @@ class Blah(Foo):
 
 
 def function_a(a, b, c, d):
-    pass
+    print "__main__:function_a(%s, %s, %s, %s)" % (a, b, c, d)
 
 #--------------------------
 
@@ -82,22 +118,13 @@ def function_a(a, b, c, d):
 def _load_plugins(config):
     if config:
         for name, info in config.iteritems():
-            driver_name = info['driver']
-            driver_config = info['config']
-            plugin_class = find_code(driver_name)
-            print "Loaded plugin '%(name)s' from %(driver_name)s" % locals()
-            plugin = plugin_class(driver_config)
-            info['impl'] = plugin
+            code = info['code']
+            plugin_config = info['config']
+            collector_class = find_code(code)
+            print "Loaded plugin '%(name)s' from %(code)s" % locals()
+            collector = collector_class(plugin_config)
+            info['impl'] = collector
     return config
-
-
-def _plugin_wrapper(inner, plugin, config):
-    def defer(*args, **kwargs):
-        state = plugin.start(config)
-        inner(*args, **kwargs)
-        plugin.stop(state, config)
-
-    return defer
 
 
 def _monkeypatch(config):
@@ -105,25 +132,24 @@ def _monkeypatch(config):
         pass
 
 
-def _inject_plugins(plugins, config):
-    for name, info in plugins.iteritems():
+def _inject_collectors(collectors, config):
+    for name, info in collectors.iteritems():
         plugin_impl = info['impl']
 
+        # See if we have any hooks for this collector in the
+        # global configuration.
         plugin_commands = config.get(name)
         if not plugin_commands:
             continue
 
         # a 1-1 list of plugin_config that holds underlying impls
         original_impls = []
-        for target in plugin_commands:
-            target_impl = find_code(target)
-            print "Monkeypatching %s plugin on %s" % (name, target)
-            # Need to keep the old impl around
-            # and need to keep all the plugin wrapper references
-            # and, ideally, impose functools on each different patch
-            # (likely impossible).
+        for command in plugin_commands:
+            target = command['target']
+            command_config = command.get('config')
+            print "Monkeypatching '%s' plugin on %s" % (name, target)
+            target_impl = inject_code(target, plugin_impl, command_config)
             original_impls.append(target_impl)
-            target_impl = _plugin_wrapper(target_impl, plugin_impl, info)
 
         info['original_impls'] = original_impls
 
@@ -136,7 +162,11 @@ if __name__ == '__main__':
     with open(filename) as f:
         config = json.load(f)
 
-    plugins = _load_plugins(config.get('plugins'))
+    notifiers = _load_plugins(config.get('notifiers'))
+    collectors = _load_plugins(config.get('collectors'))
     _monkeypatch(config.get('monkeypatch'))
 
-    _inject_plugins(plugins, config)
+    _inject_collectors(collectors, config)
+
+    # Try some
+    function_a(1, 2, 3, 4)
