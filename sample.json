@@ -1,7 +1,7 @@
 {
     "notifiers" : {
         "statsd": {
-            "code": "__main__:Statsd",
+            "code": "notifiers:Statsd",
             "config": {
                 "server": "127.0.0.1",
                 "port": 8000
@@ -11,24 +11,19 @@
 
     "collectors" : {
         "profile": {
-            "code": "__main__:Profile",
+            "code": "collectors:Profile",
             "config": {
                 "notifiers": ["statsd"]
             }
         },
         "time": {
-            "code": "__main__:Time",
+            "code": "collectors:Time",
             "config": {
                 "notifiers": ["statsd"]
             }
         }
 
     },
-
-    "monkeypatch": [
-        {"this": "__main__:function_a", 
-         "with": "__main__:wrapped_function_a"}
-    ],
 
     "profile": [
         {"target": "__main__:function_a"},
