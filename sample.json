@@ -9,6 +9,10 @@
         }
     },
 
+    "label_extractors" : {
+        "nova_rpc" : { "code": "label_extractors:NovaRPC" }
+    },
+           
     "collectors" : {
         "profile": {
             "code": "collectors:Profile",
@@ -22,17 +26,20 @@
                 "notifiers": ["statsd"]
             }
         }
-
     },
 
-    "profile": [
-        {"target": "__main__:function_a"},
+    "time": [
+        {"target": "__main__:function_a", 
+         "label_extractor": "nova_rpc"
+        },
         {"target": "__main__:Foo.method_a"},
         {"target": "__main__:Blah.method_a"},
-        {"target": "__main__:Blah.method_b"}
+        {"target": "__main__:Blah.method_b",
+         "config": {"label": "this.is.my.label"}
+        }
     ],
 
-    "time": [
+    "profile": [
         {"target": "test_module:Foo.method_a"}, 
         {"target": "./external/test_module.py|external.test_module:Blah.method_a"},
         {"target": "./external/test_module.py|external.test_module:function_a"}
