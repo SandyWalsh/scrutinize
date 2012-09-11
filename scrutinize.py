@@ -48,7 +48,6 @@ def load_plugins(config):
             code = info['code']
             plugin_config = info.get('config', {})
             plugin_class = find_code(code)
-            print "Loaded plugin '%(name)s' from %(code)s" % locals()
             plugin = plugin_class(plugin_config)
             plugin_dict[name] = plugin
     return plugin_dict
@@ -63,7 +62,7 @@ def plugin_wrapper(bundle):
             label = bundle.label_extractor.extract(*args, **kwargs) or \
                                             bundle.label
         try:
-            result = bundle.target_impl(*args, **kwargs)
+            result = bundle.collector.call_target(bundle, *args, **kwargs)
         finally:
             value = bundle.collector.stop(state)
             bundle.notify(label, value)
@@ -73,6 +72,12 @@ def plugin_wrapper(bundle):
 
 
 class Bundle(object):
+    """A Bundle is, essentially, a fancy tuple of:
+       - a Collector (the thing that extracts a measurement)
+       - a list of Notifiers (to send extracted data somewhere)
+       - a Target (the code you want to measure)
+       - a Label Extractor (for pulling the label name from a live call)
+    """
     def __init__(self, label, bundle, collectors, label_extractors, notifiers):
         self.label = label
         self.target = bundle["target"]
@@ -127,7 +132,12 @@ class Bundle(object):
 
 class Foo(object):
     def method_a(self, a, b, c, d):
-        pass
+        r = ""
+        for _d in xrange(d):
+            for _c in xrange(c):
+                for _b in xrange(b):
+                    r += a
+        return r
 
 
 class Blah(Foo):
@@ -170,6 +180,8 @@ if __name__ == '__main__':
     function_a("label.from.extractor", 2, 3, 4)
     b = Blah()
     print b.method_b(10, 20, 30, 40)
+    f = Foo()
+    print f.method_a("scrutinize", 10, 10, 10)
 
     for bundle in bundles:
         bundle.reset()

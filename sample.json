@@ -33,7 +33,7 @@
 
     "Foo.method_a" : {
         "target": "__main__:Foo.method_a",
-        "collector": "time",
+        "collector": "profile",
         "notifiers": ["statsd"]
     },
 

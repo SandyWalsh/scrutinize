@@ -1,11 +1,10 @@
 import time
+import cProfile
 
 
 class Collector(object):
     def __init__(self, configuration):
         self.configuration = configuration
-        self.notifiers = configuration.get('notifiers', [])
-        self.notifier_dict = {}  # {name: handle}
         print self.__class__.__name__, configuration
 
     def start(self):
@@ -17,21 +16,24 @@ class Collector(object):
     def stop(self, state):
         pass
 
+    def call_target(self, bundle, *args, **kwargs):
+        return bundle.target_impl(*args, **kwargs)
+
 
 class Profile(Collector):
-    def start(self):
-        print "Profile.start"
-
-    def stop(self, state):
-        print "Profile.stop"
+    def call_target(self, bundle, *args, **kwargs):
+        p = cProfile.Profile()
+        result = p.runcall(bundle.target_impl, *args, **kwargs)
+        stats = p.getstats()
+        for entry in stats:
+            print cProfile.label(entry.code)
+        return result
 
 
 class Time(Collector):
     def start(self):
-        print "Time.start"
         return time.time()
 
     def stop(self, state):
         elapsed = time.time() - state
-        print "Time.stop", elapsed
         return elapsed

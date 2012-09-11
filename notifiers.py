@@ -1,6 +1,6 @@
 class Statsd(object):
     def __init__(self, configuration):
-        print "Statsd", configuration
+        self.configuration = configuration
 
     def send(self, label, data):
         print "Statsd.send '%(label)s' = %(data)s" % locals()
