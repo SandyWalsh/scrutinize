@@ -12,36 +12,52 @@
     "label_extractors" : {
         "nova_rpc" : { "code": "label_extractors:NovaRPC" }
     },
-           
+
     "collectors" : {
         "profile": {
             "code": "collectors:Profile",
-            "config": {
-                "notifiers": ["statsd"]
-            }
+            "config": {}
         },
         "time": {
             "code": "collectors:Time",
-            "config": {
-                "notifiers": ["statsd"]
-            }
+            "config": {}
         }
     },
 
-    "time": [
-        {"target": "__main__:function_a", 
-         "label_extractor": "nova_rpc"
-        },
-        {"target": "__main__:Foo.method_a"},
-        {"target": "__main__:Blah.method_a"},
-        {"target": "__main__:Blah.method_b",
-         "config": {"label": "this.is.my.label"}
-        }
-    ],
+    "local.function_a" : {
+        "target": "__main__:function_a", 
+        "collector": "time",
+        "label_extractor": "nova_rpc",
+        "notifiers": ["statsd"]
+    },
 
-    "profile": [
-        {"target": "test_module:Foo.method_a"}, 
-        {"target": "./external/test_module.py|external.test_module:Blah.method_a"},
-        {"target": "./external/test_module.py|external.test_module:function_a"}
-    ]
+    "Foo.method_a" : {
+        "target": "__main__:Foo.method_a",
+        "collector": "time",
+        "notifiers": ["statsd"]
+    },
+
+    "Blah.method_b" : {
+        "target": "__main__:Blah.method_b",
+        "collector": "time",
+        "notifiers": ["statsd"]
+    },
+
+    "test_module.Blah.method_a" : {
+        "target": "test_module:Foo.method_a", 
+        "collector": "profile",
+        "notifiers": ["statsd"]
+    },
+
+    "external.test_module.Blah.method_a" : {
+        "target": "./external/test_module.py|external.test_module:Blah.method_a",
+        "collector": "profile",
+        "notifiers": ["statsd"]
+    },
+
+    "external.test_module.function_a" : {
+        "target": "./external/test_module.py|external.test_module:function_a",
+        "collector": "profile",
+        "notifiers": ["statsd"]
+    }
 } 
