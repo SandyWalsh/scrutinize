@@ -11,6 +11,18 @@ import traceback
 LOG = logging.getLogger(__name__)
 
 
+class MissingModule(Exception):
+    pass
+
+
+class MissingFile(Exception):
+    pass
+
+
+class MissingMethodOrFunction(Exception):
+    pass
+
+
 def get_module(target):
     """Import a named class, module, method or function.
 
@@ -19,19 +31,25 @@ def get_module(target):
         ".../file/path|path.to.namespace:function"
     """
 
-    filename, sep, namespace= target.rpartition('|')
+    filename, sep, namespace = target.rpartition('|')
+    print "%s/%s/%s" % (filename, sep, namespace)
     module, sep, klass_or_function = namespace.rpartition(':')
+    if not module:
+        raise MissingModule("Need a module path for %s (%s)" %
+                            (namespace, target))
+
     if filename:
         if not module in sys.modules:
             if os.path.isfile(filename):
                 imp.load_source(module, filename)
-
-    if not module:
-        raise Exception("Need a module path for %s (%s)" % (namespace, target))
+            else:
+                raise MissingFile("Can not find %s" % filename)
 
     if not module in sys.modules:
         __import__(module)
 
+    if not klass_or_function:
+        raise MissingMethodOrFunction("No Method or Function specified")
     klass, sep, function = klass_or_function.rpartition('.')
     return module, klass, function
 
@@ -158,5 +176,3 @@ def scrutinize(filename):
 def unwind(bundles):
     for bundle in bundles:
         bundle.reset()
-
-

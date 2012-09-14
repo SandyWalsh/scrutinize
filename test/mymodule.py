@@ -9,3 +9,7 @@ class Blah(Foo):
 
     def method_b(self, a, b, c, e):
         pass
+
+
+def function_a(a, b, c):
+    return (a, b, c)

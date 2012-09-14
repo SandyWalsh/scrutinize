@@ -1,0 +1,63 @@
+{
+    "notifiers" : {
+        "statsd": {
+            "code": "notifiers:Statsd",
+            "config": {
+                "host": "127.0.0.1",
+                "port": 8000
+            }
+        }
+    },
+
+    "label_extractors" : {
+        "nova_rpc" : { "code": "label_extractors:NovaRPC" }
+    },
+
+    "collectors" : {
+        "profile": {
+            "code": "collectors:Profile",
+            "config": {}
+        },
+        "time": {
+            "code": "collectors:Time",
+            "config": {}
+        }
+    },
+
+    "local.function_a" : {
+        "target": "__main__:function_a", 
+        "collector": "time",
+        "label_extractor": "nova_rpc",
+        "notifiers": ["statsd"]
+    },
+
+    "Foo.method_a" : {
+        "target": "__main__:Foo.method_a",
+        "collector": "profile",
+        "notifiers": ["statsd"]
+    },
+
+    "Blah.method_b" : {
+        "target": "__main__:Blah.method_b",
+        "collector": "time",
+        "notifiers": ["statsd"]
+    },
+
+    "test_module.Blah.method_a" : {
+        "target": "test_module:Foo.method_a", 
+        "collector": "profile",
+        "notifiers": ["statsd"]
+    },
+
+    "external.test_module.Blah.method_a" : {
+        "target": "./external/test_module.py|external.test_module:Blah.method_a",
+        "collector": "profile",
+        "notifiers": ["statsd"]
+    },
+
+    "external.test_module.function_a" : {
+        "target": "./external/test_module.py|external.test_module:function_a",
+        "collector": "profile",
+        "notifiers": ["statsd"]
+    }
+} 
