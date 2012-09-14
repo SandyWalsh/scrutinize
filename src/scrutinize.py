@@ -1,10 +1,14 @@
-import json
 import imp
 import inspect
+import json
+import logging
 import os
 import sys
 import time
 import traceback
+
+
+LOG = logging.getLogger(__name__)
 
 
 def get_module(target):
@@ -98,8 +102,8 @@ class Bundle(object):
         self.target_impl = None  # to be replaced on patch.
 
     def inject(self):
-        print "Monkeypatching '%s' plugin on %s" % \
-                        (self.collector.__class__.__name__, self.target)
+        LOG.debug("Monkeypatching '%s' plugin on %s" % \
+                        (self.collector.__class__.__name__, self.target))
 
         module, klass, function = get_module(self.target)
         if not klass:
@@ -112,8 +116,8 @@ class Bundle(object):
         setattr(klass_object, function, plugin_wrapper(self))
 
     def reset(self):
-        print "Resetting '%s' plugin from %s" % \
-                        (self.collector.__class__.__name__, self.target)
+        LOG.debug("Resetting '%s' plugin from %s" % \
+                        (self.collector.__class__.__name__, self.target))
         module, klass, function = get_module(bundle.target)
         if not klass:
             setattr(sys.modules[module], function, bundle.target_impl)
@@ -129,43 +133,7 @@ class Bundle(object):
                 notifier.send(metrics)
 
 
-#--------------------------
-# Sample functions/methods for testing
-
-def level_2():
-    for x in xrange(3):
-        time.sleep(1)
-
-
-def level_1():
-    for x in xrange(3):
-        time.sleep(1)
-        level_2()
-
-
-class Foo(object):
-    def method_a(self, a, b, c, d):
-        level_1()
-
-
-class Blah(Foo):
-    def method_a(self, a, b, c, d):
-        pass
-
-    def method_b(self, a, b, c, e):
-        return a + b + c + e
-
-
-def function_a(a, b, c, d):
-    print "__main__:function_a(%s, %s, %s, %s)" % (a, b, c, d)
-
-#--------------------------
-
-
-if __name__ == '__main__':
-    filename = 'sample.json'
-    if len(sys.argv) > 1:
-        filename = sys.argv[1]
+def scrutinize(filename):
     config = None
     with open(filename) as f:
         config = json.load(f)
@@ -184,15 +152,11 @@ if __name__ == '__main__':
     for bundle in bundles:
         bundle.inject()
 
-    # Try some
-    function_a("label.from.extractor", 2, 3, 4)
-    b = Blah()
-    print b.method_b(10, 20, 30, 40)
-    f = Foo()
-    print f.method_a("scrutinize", 10, 10, 10)
+    return bundles
 
+
+def unwind(bundles):
     for bundle in bundles:
         bundle.reset()
 
-    function_a("label.from.extractor", 2, 3, 4)
-    print b.method_b(10, 20, 30, 40)
+

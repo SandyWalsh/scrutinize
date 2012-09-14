@@ -1,11 +1,15 @@
-import time
 import cProfile
+import logging
+import time
+
+
+LOG = logging.getLogger(__name__)
 
 
 class Collector(object):
     def __init__(self, configuration):
         self.configuration = configuration
-        print self.__class__.__name__, configuration
+        LOG.debug("%s: Config=%s" % (self.__class__.__name__, configuration))
 
     def start(self, label):
         # NOTE: Don't store any state in this collector.

@@ -1,4 +1,8 @@
+import logging
 import socket
+
+
+LOG = logging.getLogger(__name__)
 
 
 class Statsd(object):
@@ -6,17 +10,15 @@ class Statsd(object):
         self.host = configuration['host']
         self.port = int(configuration['port'])
         self.socket_type = 'udp'
+        LOG.debug("Statsd notifier %s:%s" % (self.host, self.port))
 
         self._socket = None
 
     def send(self, metrics):
-        print "Statsd.send-----"
         for label, data in metrics:
             self._send_item("%s:%.7f|ms" % (label, data))
 
     def _send_item(self, body):
-        print "SEND:", body
-
         # Since we're keeping the socket open for a long time, we try
         # the send twice, reopening the socket in between rounds, if
         # sending fails the first time.
@@ -31,9 +33,9 @@ class Statsd(object):
                 sock.sendall(body)
             except socket.error as e:
                 if rnd:
-                    print "%s: Error writing to server (%s, %s): %s" % \
+                    LOG.error("%s: Error writing to server (%s, %s): %s" % \
                               (self.__class__.__name__, self.host, self.port,
-                               e)
+                               e))
 
                 # Try reopening the socket next time
                 self._close_socket()
@@ -60,7 +62,7 @@ class Statsd(object):
             try:
                 sock.connect((self.host, self.port))
             except socket.error as e:
-                print ("Error connecting to server %s port %s: %s" %
+                LOG.error("Error connecting to server %s port %s: %s" %
                        (self.host, self.port, e))
                 return None
 
