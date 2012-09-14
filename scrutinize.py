@@ -3,6 +3,7 @@ import imp
 import inspect
 import os
 import sys
+import time
 import traceback
 
 
@@ -55,17 +56,18 @@ def load_plugins(config):
 
 def plugin_wrapper(bundle):
     def defer(*args, **kwargs):
-        state = bundle.collector.start()
         result = None
         label = bundle.label
         if bundle.label_extractor:
             label = bundle.label_extractor.extract(*args, **kwargs) or \
                                             bundle.label
+        state = bundle.collector.start(label)
         try:
-            result = bundle.collector.call_target(bundle, *args, **kwargs)
+            result = bundle.collector.call_target(state, bundle,
+                                                  *args, **kwargs)
         finally:
-            value = bundle.collector.stop(state)
-            bundle.notify(label, value)
+            metrics = bundle.collector.stop(state)
+            bundle.notify(metrics)
         return result
 
     return defer
@@ -121,23 +123,29 @@ class Bundle(object):
 
         bundle.target_impl = None
 
-    def notify(self, label, value):
+    def notify(self, metrics):
         for notifier in self.send_list:
             if notifier:
-                notifier.send(label, value)
+                notifier.send(metrics)
 
 
 #--------------------------
 # Sample functions/methods for testing
 
+def level_2():
+    for x in xrange(3):
+        time.sleep(1)
+
+
+def level_1():
+    for x in xrange(3):
+        time.sleep(1)
+        level_2()
+
+
 class Foo(object):
     def method_a(self, a, b, c, d):
-        r = ""
-        for _d in xrange(d):
-            for _c in xrange(c):
-                for _b in xrange(b):
-                    r += a
-        return r
+        level_1()
 
 
 class Blah(Foo):
