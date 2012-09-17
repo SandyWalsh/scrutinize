@@ -6,35 +6,6 @@ import stubout
 import scrutinize
 import collectors
 
-#--------------------------
-# test functions/methods
-
-def level_2():
-    pass
-
-
-def level_1():
-    pass
-
-
-class Foo(object):
-    def method_a(self, a, b, c, d):
-        level_1()
-
-
-class Blah(Foo):
-    def method_a(self, a, b, c, d):
-        pass
-
-    def method_b(self, a, b, c, e):
-        return a + b + c + e
-
-
-def function_a(a, b, c, d):
-    pass
-
-#--------------------------
-
 
 class TestCase(unittest.TestCase):
 
@@ -43,6 +14,15 @@ class TestCase(unittest.TestCase):
 
     def tearDown(self):
         self.stubs.UnsetAll()
+
+
+def dummy_function():
+    pass
+
+
+class DummyClass(object):
+    def method_a(self):
+        pass
 
 
 class TestMonkeyPatching(TestCase):
@@ -77,10 +57,11 @@ class TestMonkeyPatching(TestCase):
                     scrutinize.find_code, "test_scrutinize:missing")
 
     def test_good_find_code(self):
-        self.assertEquals(level_1,
-                    scrutinize.find_code("test_scrutinize:level_1"))
-        self.assertEquals(Foo.method_a,
-                    scrutinize.find_code("test_scrutinize:Foo.method_a"))
+        self.assertEquals(dummy_function,
+                    scrutinize.find_code("test_scrutinize:dummy_function"))
+        self.assertEquals(DummyClass.method_a,
+                    scrutinize.find_code(
+                                    "test_scrutinize:DummyClass.method_a"))
 
         # Note: if we're comparing references, they have to come
         # from the same module. So we have to make sure we name
@@ -153,47 +134,94 @@ def simple_function(a, b, c=3):
     return a + b + c
 
 
-class TestExtractor(object):
+class FakeClass(object):
+    def simple_method(self, a, b, c=3):
+        return a + b + c
+
+
+class FakeFunctionExtractor(object):
     def extract(self, *args, **kwargs):
-        return "label_a=%d" % args[0]
+        return "label_a=%s" % args[0]
 
 
-class TestCollector(collectors.Collector):
+class FakeMethodExtractor(object):
+    def extract(self, classself, *args, **kwargs):
+        return "label_a=%s" % args[0]
+
+
+class FakeCollector(collectors.Collector):
     called = False
+    label = None
     def call_target(self, __state, __bundle, *args, **kwargs):
         self.called = True
-        return super(TestCollector, self).call_target(__state, __bundle,
+        self.label = __state
+        return super(FakeCollector, self).call_target(__state, __bundle,
                      *args, **kwargs)
 
 
-class TestNotifier(object):
-    pass
+class FakeNotifier(object):
+    called = False
+    def send(self, metrics):
+        self.called = True
 
 
 class TestBundle(TestCase):
 
-    def setUp(self):
-        super(TestBundle, self).setUp()
-        label_extractors = {'extractor': TestExtractor()}
-        collectors = {'collector': TestCollector({})}
-        notifiers = {'notifier': TestNotifier()}
+    def _set_bundle(self, target, extractor):
+        label_extractors = {'function': FakeFunctionExtractor(),
+                            'method': FakeMethodExtractor()}
+        collectors = {'collector': FakeCollector({})}
+        notifiers = {'notifier': FakeNotifier()}
 
-        config = dict(target='test_scrutinize:simple_function',
+        config = dict(target=target,
                       collector='collector',
-                      label_extractor='extractor', notifiers=[])
+                      notifiers=['notifier',],
+                      label_extractor=extractor)
         label = "undefined"
         self.bundle = scrutinize.Bundle(label, config, collectors,
                                         label_extractors, notifiers)
 
     def test_function(self):
+        self._set_bundle('test_scrutinize:simple_function', 'function')
+
         self.assertFalse(self.bundle.collector.called)
+        self.assertFalse(self.bundle.send_list[0].called)
         self.bundle.inject()
         self.assertEquals(6, simple_function(1, 2))
         self.assertTrue(self.bundle.collector.called)
+        self.assertTrue(self.bundle.send_list[0].called)
+
+        # Also make sure we extracted the label correctly
+        self.assertEqual("label_a=1", self.bundle.collector.label)
+
+        # Reset and make sure it's all unwound again.
         self.bundle.collector.called = False
         self.bundle.reset()
         self.assertEquals(6, simple_function(1, 2))
         self.assertFalse(self.bundle.collector.called)
+
+    def test_method(self):
+        self._set_bundle('test_scrutinize:FakeClass.simple_method', 'method')
+
+        self.assertFalse(self.bundle.collector.called)
+        self.assertFalse(self.bundle.send_list[0].called)
+        self.bundle.inject()
+        fake = FakeClass()
+        self.assertEquals(6, fake.simple_method(1, 2))
+        self.assertTrue(self.bundle.collector.called)
+        self.assertTrue(self.bundle.send_list[0].called)
+
+        # Also make sure we extracted the label correctly
+        self.assertEqual("label_a=1", self.bundle.collector.label)
+
+        # Reset and make sure it's all unwound again.
+        self.bundle.collector.called = False
+        self.bundle.reset()
+        fake = FakeClass()
+        self.assertEquals(6, fake.simple_method(1, 2))
+        self.assertFalse(self.bundle.collector.called)
+
+
 
 if False:
     filename = 'test.json'
