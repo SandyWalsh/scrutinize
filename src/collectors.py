@@ -39,6 +39,7 @@ class Profile(Collector):
 
     def _scrub(self, value):
         value = value.replace(".", "_")
+        value = value.replace("/", "_")
         value = value.replace("|", "_")
         return value.replace(":", "_")
 
@@ -60,8 +61,6 @@ class Profile(Collector):
         filtered.sort()
         filtered.reverse()
         __state['metrics'] = filtered
-        for total, callcount, label in filtered:
-            print label, total, callcount
         return result
 
 

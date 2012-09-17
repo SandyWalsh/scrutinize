@@ -1,19 +1,9 @@
-import unittest2 as unittest
 import sys
-
-import stubout
 
 import scrutinize
 import collectors
 
-
-class TestCase(unittest.TestCase):
-
-    def setUp(self):
-        self.stubs = stubout.StubOutForTesting()
-
-    def tearDown(self):
-        self.stubs.UnsetAll()
+import common
 
 
 def dummy_function():
@@ -25,7 +15,7 @@ class DummyClass(object):
         pass
 
 
-class TestMonkeyPatching(TestCase):
+class TestMonkeyPatching(common.TestCase):
     def test_bad_targets(self):
         self.assertRaises(scrutinize.MissingModule, scrutinize.get_module,
                           "missing.py")
@@ -165,7 +155,7 @@ class FakeNotifier(object):
         self.called = True
 
 
-class TestBundle(TestCase):
+class TestBundle(common.TestCase):
 
     def _set_bundle(self, target, extractor):
         label_extractors = {'function': FakeFunctionExtractor(),
@@ -220,21 +210,3 @@ class TestBundle(TestCase):
         fake = FakeClass()
         self.assertEquals(6, fake.simple_method(1, 2))
         self.assertFalse(self.bundle.collector.called)
-
-
-
-if False:
-    filename = 'test.json'
-    state = scrutinize.scrutinize(filename)
-
-    # Try some
-    function_a("label.from.extractor", 2, 3, 4)
-    b = Blah()
-    print b.method_b(10, 20, 30, 40)
-    f = Foo()
-    print f.method_a("scrutinize", 10, 10, 10)
-
-    scrutinize.unwind(state)
-
-    function_a("label.from.extractor", 2, 3, 4)
-    print b.method_b(10, 20, 30, 40)
