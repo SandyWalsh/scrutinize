@@ -23,6 +23,10 @@ class MissingMethodOrFunction(Exception):
     pass
 
 
+class NoCollector(Exception):
+    pass
+
+
 def get_module(target):
     """Import a named class, module, method or function.
 
@@ -83,6 +87,8 @@ def plugin_wrapper(bundle):
         if bundle.label_extractor:
             label = bundle.label_extractor.extract(*args, **kwargs) or \
                                             bundle.label
+        if not bundle.collector:
+            raise NoCollector("You must define a Collector.")
         state = bundle.collector.start(label)
         try:
             result = bundle.collector.call_target(state, bundle,
@@ -136,14 +142,14 @@ class Bundle(object):
     def reset(self):
         LOG.debug("Resetting '%s' plugin from %s" % \
                         (self.collector.__class__.__name__, self.target))
-        module, klass, function = get_module(bundle.target)
+        module, klass, function = get_module(self.target)
         if not klass:
-            setattr(sys.modules[module], function, bundle.target_impl)
+            setattr(sys.modules[module], function, self.target_impl)
         else:
             klass_object = getattr(sys.modules[module], klass)
-            setattr(klass_object, function, bundle.target_impl)
+            setattr(klass_object, function, self.target_impl)
 
-        bundle.target_impl = None
+        self.target_impl = None
 
     def notify(self, metrics):
         for notifier in self.send_list:

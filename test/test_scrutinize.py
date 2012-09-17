@@ -4,19 +4,17 @@ import sys
 import stubout
 
 import scrutinize
+import collectors
 
 #--------------------------
 # test functions/methods
 
 def level_2():
-    for x in xrange(3):
-        time.sleep(1)
+    pass
 
 
 def level_1():
-    for x in xrange(3):
-        time.sleep(1)
-        level_2()
+    pass
 
 
 class Foo(object):
@@ -34,7 +32,6 @@ class Blah(Foo):
 
 def function_a(a, b, c, d):
     pass
-    # print "__main__:function_a(%s, %s, %s, %s)" % (a, b, c, d)
 
 #--------------------------
 
@@ -98,6 +95,105 @@ class TestMonkeyPatching(TestCase):
         self.assertEqual(same, external.test_module.Blah.method_b)
         self.assertNotEqual(diff, external.test_module.Blah.method_b)
 
+
+    def test_load_plugins(self):
+        self.assertEquals({}, scrutinize.load_plugins(None))
+        self.assertEquals({}, scrutinize.load_plugins({}))
+        # No need to test the rest of the function since
+        # it's dealt with elsewhere.
+
+    def test_plugin_wrapper_no_collector(self):
+        class TestBundle(object):
+            label = 'test'
+            label_extractor = None
+            collector = None
+
+        wrapped = scrutinize.plugin_wrapper(TestBundle())
+        self.assertRaises(scrutinize.NoCollector, wrapped)
+
+    def test_plugin_wrapper_happy_day(self):
+        collected_metrics =  [('label_a', 10), ('label_b', 20)]
+
+        class TestCollector(collectors.Collector):
+            called = []
+
+            def start(iself, label):
+                iself.called.append(1)
+                return super(TestCollector, iself).start(label)
+
+            def stop(iself, state):
+                iself.called.append(2)
+                super(TestCollector, iself).stop(state)
+                return collected_metrics
+
+            def call_target(iself, __state, __bundle, *args, **kwargs):
+                iself.called.append(3)
+                self.assertEquals(__state, "test")
+                return __bundle.target_impl(*args, **kwargs)
+
+        class TestBundle(object):
+            label = 'test'
+            label_extractor = None
+            collector = TestCollector({})
+
+            def target_impl(iself, a, b, c=3):
+                return a + b + c
+
+            def notify(iself, metrics):
+                self.assertEquals(collected_metrics, metrics)
+
+        bundle = TestBundle()
+        wrapped = scrutinize.plugin_wrapper(bundle)
+        result = wrapped(1, 2)
+        self.assertEquals(result, 6)
+        self.assertEquals([1,3,2], bundle.collector.called)
+
+
+def simple_function(a, b, c=3):
+    return a + b + c
+
+
+class TestExtractor(object):
+    def extract(self, *args, **kwargs):
+        return "label_a=%d" % args[0]
+
+
+class TestCollector(collectors.Collector):
+    called = False
+    def call_target(self, __state, __bundle, *args, **kwargs):
+        self.called = True
+        return super(TestCollector, self).call_target(__state, __bundle,
+                     *args, **kwargs)
+
+
+class TestNotifier(object):
+    pass
+
+
+class TestBundle(TestCase):
+
+    def setUp(self):
+        super(TestBundle, self).setUp()
+        label_extractors = {'extractor': TestExtractor()}
+        collectors = {'collector': TestCollector({})}
+        notifiers = {'notifier': TestNotifier()}
+
+        config = dict(target='test_scrutinize:simple_function',
+                      collector='collector',
+                      label_extractor='extractor', notifiers=[])
+        label = "undefined"
+        self.bundle = scrutinize.Bundle(label, config, collectors,
+                                        label_extractors, notifiers)
+
+    def test_function(self):
+        self.assertFalse(self.bundle.collector.called)
+        self.bundle.inject()
+        self.assertEquals(6, simple_function(1, 2))
+        self.assertTrue(self.bundle.collector.called)
+        self.bundle.collector.called = False
+        self.bundle.reset()
+        self.assertEquals(6, simple_function(1, 2))
+        self.assertFalse(self.bundle.collector.called)
 
 if False:
     filename = 'test.json'
