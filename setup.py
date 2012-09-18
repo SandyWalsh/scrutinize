@@ -16,7 +16,7 @@ setup(
                  "measurements. Based on the work of Matt Dietz's Tach."),
     license='Apache License (2.0)',
     keywords='metrics, statsd, profile, timing',
-    packages=find_packages(exclude=['tests']),
+    packages=find_packages(exclude=['test']),
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: Apache Software License',
