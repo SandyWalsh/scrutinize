@@ -4,11 +4,9 @@ import os
 import sys
 
 possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0])))
-print "TOPDIR", possible_topdir
 if os.path.exists(os.path.join(possible_topdir, 'scrutinize', '__init__.py')):
     sys.path.insert(0, possible_topdir)
 
-print "CURDIR", os.path.abspath(os.curdir)
 sys.path.insert(0, os.path.abspath(os.curdir))
 
 import scrutinize
@@ -16,6 +14,10 @@ import scrutinize
 if __name__ == '__main__':
     # Move the argv indices back two so the proper cmdline is passed
     # to the target program.
+    if len(sys.argv) < 3:
+        print "Usage: scrutinize scrutinize.conf target.py ..."
+        sys.exit(1)
+
     executable = sys.argv.pop(0)
     config_path = sys.argv.pop(0)
     script_path = sys.argv[0]

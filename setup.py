@@ -27,6 +27,6 @@ setup(
     scripts=['bin/scrutinize'],
     long_description=read('README.md'),
     install_requires=[''],
-    data_files=[('', ['conf/sample.json'])],
+    data_files=[('', ['example/sample.json', 'example/sample.py'])],
     zip_safe=False
 )

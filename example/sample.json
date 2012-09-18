@@ -1,0 +1,35 @@
+{
+    "notifiers" : {
+        "statsd": {
+            "code": "scrutinize.notifiers:Statsd",
+            "config": {
+                "host": "127.0.0.1",
+                "port": 8000
+            }
+        }
+    },
+
+    "label_extractors" : {
+        "ArgExtract" : {"code": "scrutinize.label_extractors:ArgExtract",
+                       "position": 0,
+                       "prefix": "arg_"}
+    },
+
+    "collectors" : {
+        "profile": {
+            "code": "scrutinize.collectors:Profile",
+            "config": {}
+        },
+        "time": {
+            "code": "scrutinize.collectors:Time",
+            "config": {}
+        }
+    },
+
+    "unused_label" : {
+        "target": "example:sample.do_it", 
+        "collector": "time",
+        "label_extractor": "ArgExtract",
+        "notifiers": ["statsd"]
+    }
+} 
